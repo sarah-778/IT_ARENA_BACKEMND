@@ -4,68 +4,54 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of products.
-     */
     public function index()
     {
-        // Fetch all products, ordered by newest first
         return response()->json(Product::orderBy('created_at', 'desc')->get(), 200);
     }
 
-    /**
-     * Store a newly created product in storage.
-     */
     public function store(Request $request)
-{
-    // Validate incoming data
-    $request->validate([
-        'customer_name' => 'required|string',
-        'phone'         => 'required|string',
-        'email'         => 'required|email',
-        'district'      => 'required|string',
-        'address'       => 'required|string',
-        'items'         => 'required|array',
-        'subtotal'      => 'required|numeric',
-    ]);
+    {
+        // 1. Validate based on your Product Model's $fillable fields
+        $validatedData = $request->validate([
+            'name'        => 'required|string|max:255',
+            'category'    => 'required|string',
+            'brand'       => 'required|string',
+            'price'       => 'required|numeric',
+            'stock'       => 'required|integer',
+            'description' => 'nullable|string',
+            'isOEM'       => 'nullable|boolean',
+            'warranty'    => 'nullable|string',
+            'image'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120', // 5MB max
+        ]);
 
-    // CALCULATE MISSING FIELDS
-    $delivery_fee = ($request->district === "Kampala") ? 10000 : 20000;
-    $total = $request->subtotal + $delivery_fee;
-    
-    // GENERATE UNIQUE ORDER NUMBER
-    $order_number = 'ITA-' . strtoupper(bin2hex(random_bytes(3)));
+        // 2. Handle Image Upload
+        if ($request->hasFile('image')) {
+            // Stores in storage/app/public/products
+            $path = $request->file('image')->store('products', 'public');
+            $validatedData['image'] = $path;
+        }
 
-    // SAVE TO DATABASE
-    $order = \App\Models\Order::create([
-        'order_number'  => $order_number,
-        'customer_name' => $request->customer_name,
-        'phone'         => $request->phone,
-        'email'         => $request->email,
-        'district'      => $request->district,
-        'address'       => $request->address,
-        'items'         => $request->items,
-        'subtotal'      => $request->subtotal,
-        'delivery_fee'  => $delivery_fee,
-        'total'         => $total,
-        'status'        => 'pending',
-    ]);
+        // 3. Create the product
+        $product = Product::create($validatedData);
 
-    return response()->json(['order' => $order], 201);
-}
-    /**
-     * Remove the specified product from storage.
-     */
+        return response()->json($product, 201);
+    }
+
     public function destroy($id)
     {
         $product = Product::find($id);
 
         if (!$product) {
             return response()->json(['error' => 'Product not found'], 404);
+        }
+
+        // Delete image file from storage if it exists
+        if ($product->image) {
+            Storage::disk('public')->delete($product->image);
         }
 
         $product->delete();

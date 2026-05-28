@@ -38,10 +38,8 @@ class AuthController extends Controller
             'password' => 'required|string'
         ]);
 
-        // Check email
         $user = User::where('email', $fields['email'])->first();
 
-        // Check password
         if(!$user || !Hash::check($fields['password'], $user->password)) {
             return response(['message' => 'Bad credentials'], 401);
         }
@@ -51,6 +49,37 @@ class AuthController extends Controller
         return response([
             'user' => $user,
             'token' => $token
+        ], 200);
+    }
+
+    // UPDATE PROFILE (NEW)
+    public function updateProfile(Request $request) {
+        $user = $request->user();
+
+        $fields = $request->validate([
+            'name' => 'required|string|max:255',
+            // unique:users,email,[ID] ignores the current user's email during the check
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+        ]);
+
+        $user->update([
+            'name' => $fields['name'],
+            'email' => $fields['email'],
+        ]);
+
+        return response([
+            'message' => 'Profile updated successfully',
+            'user' => $user
+        ], 200);
+    }
+
+    // LOGOUT (NEW)
+    public function logout(Request $request) {
+        // This deletes the token currently being used for the request
+        $request->user()->currentAccessToken()->delete();
+
+        return response([
+            'message' => 'Logged out successfully'
         ], 200);
     }
 }

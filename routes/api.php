@@ -4,6 +4,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RepairController;
 use App\Http\Controllers\OrderController; // <-- Added this
+use App\Http\Controllers\MessageController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -31,6 +32,7 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::get('/users', function () {
         return \App\Models\User::all();
     });
+    Route::put('/user/update', [AuthController::class, 'updateProfile']);
 
     // Product Management
     Route::post('/products', [ProductController::class, 'store']);
@@ -45,4 +47,11 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::get('/orders', [OrderController::class, 'index']); // <-- Fetch all orders
     Route::patch('/orders/{id}/status', [OrderController::class, 'updateStatus']); // <-- Change status
     Route::delete('/orders/{id}', [OrderController::class, 'destroy']); // <-- Archive/Delete
+    // Route for the public Contact Us form
+    
+    // Messages
+    Route::post('/contact', [MessageController::class, 'store']);
+
+    // Route for your Admin Dashboard to see messages
+     Route::get('/messages', [MessageController::class, 'index']);
 });
